@@ -27,9 +27,6 @@ from sglang.srt.layers.moe.fused_moe_triton.fused_moe import (
     invoke_fused_moe_kernel,
     moe_align_block_size,
 )
-from sglang.srt.layers.moe.fused_moe_triton.fused_moe_triton_config import (
-    get_config_file_name,
-)
 from sglang.srt.layers.moe.moe_runner import MoeRunnerConfig
 from sglang.srt.layers.moe.topk import TopKConfig, select_experts
 from sglang.srt.server_args import (
@@ -632,22 +629,19 @@ def save_configs_sep(
     block_shape: List[int],
     down_moe: bool = False,
 ) -> None:
-    dtype_str = get_config_dtype_str(
-        dtype,
-        use_int8_w8a16=use_int8_w8a16,
-        use_fp8_w8a8=use_fp8_w8a8,
-        use_int8_w8a8=use_int8_w8a8,
-        use_int4_w4a16=use_int4_w4a16,
-    )
-
-    # NOTE(woosuk): The current naming convention uses w2.shape[2], which
-    # is the intermediate size after silu_and_mul.
-    filename = get_config_file_name(
+    filename = get_config_filename(
         num_experts,
-        shard_intermediate_size // 2,
-        dtype_str,
+        shard_intermediate_size,
+        hidden_size,
+        topk,
+        dtype,
+        use_fp8_w8a8,
+        use_int8_w8a8,
+        use_int8_w8a16,
+        use_int4_w4a16,
+        False,
         block_shape,
-        down_moe=down_moe,
+        down_moe,
     )
 
     print(f"Writing best config to {filename}...")
@@ -878,7 +872,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dtype",
         type=str,
-        choices=["auto", "fp8_w8a8", "int8_w8a16", "int8_w8a8", "int8_w4a16"],
+        choices=["auto", "fp8_w8a8", "int8_w8a16", "int8_w8a8", "int4_w4a16"],
         default="auto",
     )
     parser.add_argument("--seed", type=int, default=0)
